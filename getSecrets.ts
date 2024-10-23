@@ -1,10 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Define the path to your secrets file
 const secretFilePath = path.join(__dirname, 'secrets.json');
 
-// Asynchronous function to read and parse the secrets from a file
 const getSecrets = async (): Promise<{
     apiKey: string;
     baseUrl: string;
