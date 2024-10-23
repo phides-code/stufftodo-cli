@@ -1,4 +1,6 @@
 import readline from 'readline';
+import logToFile from './logToFile';
+import queryApi from './queryApi';
 
 const menuLevels: string[][] = [
     [
@@ -11,7 +13,7 @@ const menuLevels: string[][] = [
         '(D)elete',
         '(Q)uit',
     ],
-    ['task 1', 'task 2', 'task 3', 'task 4'],
+    [],
 ];
 
 let selectedIndex: number = 0;
@@ -33,7 +35,7 @@ const displayMenu = () => {
 
     console.log(
         '\nSelect an option' +
-            (currentMenuLevel > 0 ? ' (B to go back)' : '') +
+            (currentMenuLevel > 0 ? ' ((B) to go back)' : '') +
             ': '
     );
 };
@@ -63,16 +65,41 @@ const getMenuKeyLetter = (index: number): string => {
     return match ? match[1] : '';
 };
 
-const processMainMenuKey = (menuKey: string) => {
-    switch (menuKey.toUpperCase()) {
+function getIndexFromLetter(letter: string): number | null {
+    // Get the corresponding index when typing a letter key on the main menu
+    const index = menuLevels[0].findIndex((option) => {
+        const match = option.match(/\((\w)\)/);
+        return match ? match[1] === letter : false;
+    });
+
+    return index !== -1 ? index : null;
+}
+
+const getAllTasks = async () => {
+    const tasks = await queryApi('', '', 'GET', null);
+
+    if (tasks.length > 0) {
+        menuLevels[1] = tasks.map((task) => task.content);
+    } else menuLevels[1].push('No tasks found');
+
+    selectedIndex = 0;
+    currentMenuLevel = 1;
+    displayMenu();
+};
+
+const moveSelectorOnKeyPress = (menuKey: string) => {
+    const thisIndex = getIndexFromLetter(menuKey) as number;
+    selectedIndex = thisIndex > 0 ? thisIndex : 0;
+};
+
+const processMainMenuKey = async (menuKey: string) => {
+    switch (menuKey) {
         case 'P':
             break;
         case 'C':
             break;
         case 'A':
-            // await fetch all tasks
-            // set selectedIndex to 0
-            currentMenuLevel = 1;
+            getAllTasks();
             break;
         case 'N':
             break;
@@ -92,13 +119,16 @@ const processMainMenuKey = (menuKey: string) => {
 const exitProgram = () => {
     console.clear();
     console.log('Exiting...');
+    logToFile('Exiting...');
     process.exit(0);
 };
 
 const backToPriorMenu = () => {
     if (currentMenuLevel > 0) {
         currentMenuLevel--;
+        selectedIndex = 0;
     }
+
     displayMenu();
 };
 
@@ -119,24 +149,27 @@ const main = () => {
 
     // Listen for keypress events
     process.stdin.on('keypress', (str, key) => {
+        const keyName = key.name.toUpperCase();
+
         switch (true) {
-            case key.name === 'up':
+            case keyName === 'UP':
                 moveCursorUp();
                 break;
-            case key.name === 'down':
+            case keyName === 'DOWN':
                 moveCursorDown();
                 break;
-            case key.name === 'return':
+            case keyName === 'RETURN':
                 handleReturn();
                 break;
-            case key.name === 'b':
+            case keyName === 'B':
                 backToPriorMenu();
                 break;
-            case key.ctrl && key.name === 'c':
+            case key.ctrl && keyName === 'C':
                 exitProgram();
                 break;
             case currentMenuLevel === 0:
-                processMainMenuKey(key.name);
+                moveSelectorOnKeyPress(keyName);
+                processMainMenuKey(keyName);
             default:
                 break;
         }
