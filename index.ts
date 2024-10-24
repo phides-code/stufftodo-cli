@@ -1,9 +1,10 @@
 import readline from 'readline';
 import logToFile from './logToFile';
-import queryApi from './queryApi';
+import { createTask, getAllTasks, Task } from './apiUtils';
 
-const menuLevels: string[][] = [
+const menuLevels: (string[] | Task[])[] = [
     [
+        // menuLevel[0] is the main menu
         '(P)ending',
         '(C)ompleted',
         '(A)ll',
@@ -13,12 +14,23 @@ const menuLevels: string[][] = [
         '(D)elete',
         '(Q)uit',
     ],
-    [],
+    [], // menuLevel[1] is a task list
+    [], // menuLevel[2] is a list of actions for a task
 ];
 
 let selectedIndex: number = 0;
-let currentMenuLevel = 0;
-let currentMenu: string[] = [];
+let currentMenuLevel: number = 0;
+let currentMenu: string[] | Task[] = [];
+let statusMessage: string = '';
+let ignoreNextKeypress: boolean = false;
+
+export const setStatusMessage = (newMessage: string) => {
+    statusMessage = newMessage;
+};
+
+export const setIgnoreNextKeypress = (newValue: boolean) => {
+    ignoreNextKeypress = newValue;
+};
 
 const displayMenu = () => {
     console.clear();
@@ -26,18 +38,32 @@ const displayMenu = () => {
     currentMenu = menuLevels[currentMenuLevel];
 
     currentMenu.forEach((option, index) => {
+        const label: string =
+            typeof option === 'string' ? option : option.content;
         if (index === selectedIndex) {
-            console.log(`> ${option} <`);
+            console.log(`> ${label} <`);
         } else {
-            console.log(`  ${option}`);
+            console.log(`  ${label}`);
         }
     });
 
-    console.log(
-        '\nSelect an option' +
-            (currentMenuLevel > 0 ? ' ((B) to go back)' : '') +
-            ': '
-    );
+    console.log(getPromptText());
+};
+
+const getPromptText = (): string => {
+    let prompt = '';
+
+    if (statusMessage != '') {
+        prompt = statusMessage;
+    } else {
+        prompt = 'Select an option:';
+    }
+
+    if (currentMenuLevel > 0) {
+        prompt += ' ( press B to go back ): ';
+    }
+
+    return prompt;
 };
 
 const moveCursorUp = () => {
@@ -49,9 +75,9 @@ const moveCursorDown = () => {
     selectedIndex = (selectedIndex + 1) % currentMenu.length;
 };
 
-const handleReturn = () => {
+const handleReturn = async () => {
     if (currentMenuLevel === 0) {
-        processMainMenuKey(getMenuKeyLetter(selectedIndex));
+        await processMainMenuKey(getMenuKeyLetter(selectedIndex));
     } else {
         // do contextual action
     }
@@ -59,37 +85,61 @@ const handleReturn = () => {
 
 const getMenuKeyLetter = (index: number): string => {
     // Get the corresponding letter keypress when hitting enter on a main menu index
-    const menuOption = currentMenu[index];
+    const menuOption = currentMenu[index] as string;
     const match = menuOption.match(/\((\w)\)/);
 
     return match ? match[1] : '';
 };
 
-function getIndexFromLetter(letter: string): number | null {
+const getIndexFromLetter = (letter: string): number | null => {
     // Get the corresponding index when typing a letter key on the main menu
-    const index = menuLevels[0].findIndex((option) => {
+    const mainMenu = menuLevels[0] as string[];
+    const index = mainMenu.findIndex((option) => {
         const match = option.match(/\((\w)\)/);
         return match ? match[1] === letter : false;
     });
 
     return index !== -1 ? index : null;
-}
-
-const getAllTasks = async () => {
-    const tasks = await queryApi('', '', 'GET', null);
-
-    if (tasks.length > 0) {
-        menuLevels[1] = tasks.map((task) => task.content);
-    } else menuLevels[1].push('No tasks found');
-
-    selectedIndex = 0;
-    currentMenuLevel = 1;
-    displayMenu();
 };
 
 const moveSelectorOnKeyPress = (menuKey: string) => {
-    const thisIndex = getIndexFromLetter(menuKey) as number;
-    selectedIndex = thisIndex > 0 ? thisIndex : 0;
+    const thisLetterIndex = getIndexFromLetter(menuKey) as number;
+    selectedIndex = thisLetterIndex > 0 ? thisLetterIndex : 0;
+};
+
+const exitProgram = () => {
+    console.clear();
+    console.log('Exiting...');
+    logToFile('Exiting...');
+    process.exit(0);
+};
+
+const backToPriorMenu = () => {
+    if (currentMenuLevel > 0) {
+        statusMessage = '';
+        currentMenuLevel--;
+        selectedIndex = 0;
+    }
+
+    displayMenu();
+};
+
+const populateTaskMenu = (tasks: Task[]) => {
+    if (tasks.length > 0) {
+        menuLevels[1] = tasks;
+    } else {
+        menuLevels[1] = [
+            {
+                _id: '',
+                completedOn: 0,
+                content: 'No tasks found',
+                taskStatus: '',
+            } as Task,
+        ];
+    }
+    selectedIndex = 0;
+    currentMenuLevel = 1;
+    displayMenu();
 };
 
 const processMainMenuKey = async (menuKey: string) => {
@@ -99,9 +149,10 @@ const processMainMenuKey = async (menuKey: string) => {
         case 'C':
             break;
         case 'A':
-            getAllTasks();
+            populateTaskMenu(await getAllTasks());
             break;
         case 'N':
+            await createTask(readlineInterface);
             break;
         case 'M':
             break;
@@ -116,66 +167,52 @@ const processMainMenuKey = async (menuKey: string) => {
     }
 };
 
-const exitProgram = () => {
-    console.clear();
-    console.log('Exiting...');
-    logToFile('Exiting...');
-    process.exit(0);
-};
-
-const backToPriorMenu = () => {
-    if (currentMenuLevel > 0) {
-        currentMenuLevel--;
-        selectedIndex = 0;
-    }
-
-    displayMenu();
-};
-
 const main = () => {
-    // Initialize readline interface
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-        terminal: true,
-    });
-
-    readline.emitKeypressEvents(process.stdin);
-    process.stdin.setRawMode(true);
-
     // Initial menu display
     currentMenuLevel = 0;
     displayMenu();
 
     // Listen for keypress events
-    process.stdin.on('keypress', (str, key) => {
+    process.stdin.on('keypress', async (str, key) => {
         const keyName = key.name.toUpperCase();
 
-        switch (true) {
-            case keyName === 'UP':
-                moveCursorUp();
-                break;
-            case keyName === 'DOWN':
-                moveCursorDown();
-                break;
-            case keyName === 'RETURN':
-                handleReturn();
-                break;
-            case keyName === 'B':
-                backToPriorMenu();
-                break;
-            case key.ctrl && keyName === 'C':
-                exitProgram();
-                break;
-            case currentMenuLevel === 0:
-                moveSelectorOnKeyPress(keyName);
-                processMainMenuKey(keyName);
-            default:
-                break;
+        if (!ignoreNextKeypress) {
+            switch (true) {
+                case keyName === 'UP':
+                    moveCursorUp();
+                    break;
+                case keyName === 'DOWN':
+                    moveCursorDown();
+                    break;
+                case keyName === 'RETURN':
+                    await handleReturn();
+                    break;
+                case keyName === 'B':
+                    backToPriorMenu();
+                    break;
+                case key.ctrl && keyName === 'C':
+                    exitProgram();
+                    break;
+                case currentMenuLevel === 0:
+                    moveSelectorOnKeyPress(keyName);
+                    await processMainMenuKey(keyName);
+                default:
+                    break;
+            }
         }
 
         displayMenu();
     });
 };
+
+// Initialize readline interface
+const readlineInterface = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: true,
+});
+
+readline.emitKeypressEvents(process.stdin);
+process.stdin.setRawMode(true);
 
 main();
