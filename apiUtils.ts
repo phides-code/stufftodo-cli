@@ -1,16 +1,9 @@
-import readline from 'readline';
-import logToFile from './logToFile';
+import { ERROR_MESSAGE, setErrorMessage } from '.';
 import getSecrets from './getSecrets';
-import { setIgnoreNextKeypress, setStatusMessage } from '.';
+import logToFile from './logToFile';
+import { Task } from './tasks';
 
 const basePath = 'tasks';
-
-export interface Task {
-    _id: string;
-    content: string;
-    taskStatus: string;
-    completedOn: number;
-}
 
 interface ApiResponse {
     data: Task[] | null;
@@ -20,15 +13,15 @@ interface ApiResponse {
 type ApiPayload = Partial<Task>;
 
 export const getAllTasks = async (): Promise<Task[]> => {
-    setStatusMessage('Loading...');
+    // setStatusMessage('Loading...');
     const apiResponse = await executeApiCall('', '', 'GET', null);
-    setStatusMessage('');
+    // setStatusMessage('');
 
     if (apiResponse.data && apiResponse.data?.length > 0) {
         return apiResponse.data as Task[];
     }
 
-    setStatusMessage('something went wrong');
+    setErrorMessage(ERROR_MESSAGE);
     logToFile('failed to get apiResponse.data');
 
     if (apiResponse.errorMessage && apiResponse.errorMessage != null) {
@@ -38,43 +31,6 @@ export const getAllTasks = async (): Promise<Task[]> => {
     }
 
     return [];
-};
-
-export const createTask = async (
-    readlineInterface: readline.Interface
-): Promise<string> => {
-    const promptForNewTask = (): Promise<string> =>
-        new Promise((resolve) => {
-            // Disable raw mode temporarily so readline.question() works properly
-            process.stdin.setRawMode(false);
-
-            console.clear();
-
-            readlineInterface.question(
-                'Please enter a line of text: ',
-                (answer) => {
-                    resolve(answer);
-                }
-            );
-        });
-
-    // Set flag to ignore the next keypress event after task creation
-    setIgnoreNextKeypress(true);
-    const newTaskContent = await promptForNewTask();
-
-    // Re-enable raw mode and keypress handling after task creation
-    readline.emitKeypressEvents(process.stdin);
-    process.stdin.setRawMode(true);
-
-    logToFile('newTaskContent: ' + newTaskContent);
-    // next step: post new task to api
-
-    // ignore keypresses for a brief moment for any stray keypresses in the buffer
-    setTimeout(() => {
-        setIgnoreNextKeypress(false);
-    }, 500);
-
-    return newTaskContent;
 };
 
 const executeApiCall = async (
@@ -104,7 +60,7 @@ const executeApiCall = async (
             body: payload ? JSON.stringify(payload) : null,
         });
 
-        return await fetchResponse.json();
+        return (await fetchResponse.json()) as ApiResponse;
     } catch (e) {
         return {
             data: null,
