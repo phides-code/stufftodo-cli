@@ -1,7 +1,7 @@
 import { input } from '@inquirer/prompts';
 import select from './inquirerSelect';
 import { getMenuChoices, Task } from './taskUtils';
-import { createTask, getAllTasks } from './apiUtils';
+import { createTask, deleteTask, getAllTasks } from './apiUtils';
 
 let actionLetter: string = '';
 let errorMessage: string = '';
@@ -66,7 +66,7 @@ const showMainMenu = async () => {
             await processEdit(selectedTask);
             break;
         case 'D':
-            processDelete(selectedTask.id);
+            await processDelete(selectedTask.id);
         default:
             break;
     }
@@ -87,8 +87,9 @@ const processEdit = async (task: Task) => {
     console.log('Got newTask: ' + newTask);
 };
 
-const processDelete = (taskId: string) => {
+const processDelete = async (taskId: string) => {
     console.log('Deleting taskId ' + taskId);
+    await deleteTask(taskId);
 };
 
 const processCreateTask = async () => {

@@ -15,7 +15,7 @@ type ApiPayload = Partial<Task>;
 export const getAllTasks = async (): Promise<Task[]> => {
     const apiResponse = await executeApiCall('', '', 'GET', null);
 
-    if (apiResponse.data && (apiResponse.data as Task[]).length > 0) {
+    if (apiResponse.data && (apiResponse.data as Task[]).length >= 0) {
         return sortTasks(apiResponse.data as Task[]);
     }
 
@@ -48,6 +48,27 @@ export const createTask = async (newTaskContent: string) => {
     if (apiResponse.errorMessage && apiResponse.errorMessage != null) {
         logToFile(
             'createTask() got apiResponse.errorMessage: ' +
+                apiResponse.errorMessage
+        );
+    }
+
+    return;
+};
+
+export const deleteTask = async (taskId: string) => {
+    const apiResponse = await executeApiCall('', taskId, 'DELETE', null);
+
+    if (apiResponse.data && (apiResponse.data as Task).id) {
+        setStatusMessage('Task deleted.');
+        return;
+    }
+
+    setStatusMessage('Could not delete task.');
+    logToFile('deleteTask() failed to get apiResponse.data');
+
+    if (apiResponse.errorMessage && apiResponse.errorMessage != null) {
+        logToFile(
+            'deleteTask() got apiResponse.errorMessage: ' +
                 apiResponse.errorMessage
         );
     }

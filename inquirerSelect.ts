@@ -54,6 +54,7 @@ import colors from 'yoctocolors-cjs';
 import figures from '@inquirer/figures';
 import ansiEscapes from 'ansi-escapes';
 import { getErrorState, getWeHaveAtLeastOneTask, setActionLetter } from '.';
+import { Task } from './taskUtils';
 
 type SelectTheme = {
     icon: { cursor: string };
@@ -274,7 +275,9 @@ export default createPrompt(
                 const cursor = isActive ? theme.icon.cursor : ` `;
                 return color(
                     `${cursor} ${item.name} ${
-                        item.disabled ? '(completed)' : ''
+                        item.disabled && (item.value as Task).id !== '0'
+                            ? '(completed)'
+                            : ''
                     }`
                 );
             },
