@@ -13,7 +13,7 @@ interface ApiResponse {
 type ApiPayload = Partial<Task>;
 
 export const getAllTasks = async (): Promise<Task[]> => {
-    const apiResponse = await executeApiCall('', '', 'GET', null);
+    const apiResponse = await executeApiCall('', 'GET', null);
 
     if (apiResponse.data && (apiResponse.data as Task[]).length >= 0) {
         return sortTasks(apiResponse.data as Task[]);
@@ -33,7 +33,7 @@ export const getAllTasks = async (): Promise<Task[]> => {
 };
 
 export const createTask = async (newTaskContent: string) => {
-    const apiResponse = await executeApiCall('', '', 'POST', {
+    const apiResponse = await executeApiCall('', 'POST', {
         content: newTaskContent,
     });
 
@@ -56,7 +56,7 @@ export const createTask = async (newTaskContent: string) => {
 };
 
 export const deleteTask = async (taskId: string) => {
-    const apiResponse = await executeApiCall('', taskId, 'DELETE', null);
+    const apiResponse = await executeApiCall(taskId, 'DELETE', null);
 
     if (apiResponse.data && (apiResponse.data as Task).id) {
         setStatusMessage('Task deleted.');
@@ -78,7 +78,6 @@ export const deleteTask = async (taskId: string) => {
 
 export const updateTask = async (updatedTask: Task) => {
     const apiResponse = await executeApiCall(
-        '',
         updatedTask.id,
         'PUT',
         updatedTask
@@ -103,7 +102,6 @@ export const updateTask = async (updatedTask: Task) => {
 };
 
 const executeApiCall = async (
-    endpoint: string,
     param: string,
     method: string,
     payload: ApiPayload | null
@@ -111,14 +109,9 @@ const executeApiCall = async (
     try {
         const { apiKey, baseUrl } = await getSecrets();
 
-        const url =
-            baseUrl +
-            '/' +
-            basePath +
-            '/' +
-            endpoint +
-            '/' +
-            (param ? param : '');
+        const url = baseUrl + '/' + basePath + (param ? '/' + param : '');
+
+        logToFile('Sending ' + method + ' to url: ' + url);
 
         const fetchResponse = await fetch(url, {
             method,
