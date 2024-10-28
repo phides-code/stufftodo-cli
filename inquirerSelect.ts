@@ -53,13 +53,7 @@ import type { PartialDeep } from '@inquirer/type';
 import colors from 'yoctocolors-cjs';
 import figures from '@inquirer/figures';
 import ansiEscapes from 'ansi-escapes';
-import { setActionLetter } from '.';
-
-let allowedMenuOptions: string = 'Q';
-
-export const addAllowedMenuOptions = (newValues: string) => {
-    allowedMenuOptions += newValues;
-};
+import { getErrorState, getWeHaveAtLeastOneTask, setActionLetter } from '.';
 
 type SelectTheme = {
     icon: { cursor: string };
@@ -115,7 +109,7 @@ type SelectConfig<
 function isSelectable<Value>(
     item: NormalizedChoice<Value> | Separator
 ): item is NormalizedChoice<Value> {
-    return !Separator.isSeparator(item) && !item.disabled;
+    return !Separator.isSeparator(item);
 }
 
 function normalizeChoices<Value>(
@@ -192,11 +186,23 @@ export default createPrompt(
 
             const keyNameUppercase = key.name.toUpperCase();
 
+            let allowedMenuOptions = 'Q';
+            if (!getErrorState()) {
+                if (getWeHaveAtLeastOneTask()) {
+                    allowedMenuOptions += 'D';
+
+                    if (!selectedChoice.disabled) {
+                        allowedMenuOptions += 'EM';
+                    }
+                }
+
+                allowedMenuOptions += 'C';
+            }
+
             if (isEnterKey(key)) {
                 // do nothing
             } else if (
                 keyNameUppercase.length === 1 &&
-                // keyNameUppercase.match(/[CMEDQ]/)
                 keyNameUppercase.match(new RegExp(`[${allowedMenuOptions}]`))
             ) {
                 setActionLetter(keyNameUppercase);
@@ -225,23 +231,6 @@ export default createPrompt(
                 }
             } else if (isBackspaceKey(key)) {
                 rl.clearLine(0);
-            } else {
-                // Default to search
-                const searchTerm = rl.line.toLowerCase();
-                const matchIndex = items.findIndex((item) => {
-                    if (Separator.isSeparator(item) || !isSelectable(item))
-                        return false;
-
-                    return item.name.toLowerCase().startsWith(searchTerm);
-                });
-
-                if (matchIndex !== -1) {
-                    setActive(matchIndex);
-                }
-
-                searchTimeoutRef.current = setTimeout(() => {
-                    rl.clearLine(0);
-                }, 700);
             }
         });
 
@@ -279,21 +268,15 @@ export default createPrompt(
                     return ` ${item.separator}`;
                 }
 
-                if (item.disabled) {
-                    const disabledLabel =
-                        typeof item.disabled === 'string'
-                            ? item.disabled
-                            : '(disabled)';
-                    return theme.style.disabled(
-                        `${item.name} ${disabledLabel}`
-                    );
-                }
-
                 const color = isActive
                     ? theme.style.highlight
                     : (x: string) => x;
                 const cursor = isActive ? theme.icon.cursor : ` `;
-                return color(`${cursor} ${item.name}`);
+                return color(
+                    `${cursor} ${item.name} ${
+                        item.disabled ? '(completed)' : ''
+                    }`
+                );
             },
             pageSize,
             loop,

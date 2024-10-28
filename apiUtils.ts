@@ -1,7 +1,7 @@
 import { ERROR_MESSAGE, setErrorMessage } from '.';
 import getSecrets from './getSecrets';
 import logToFile from './logToFile';
-import { Task } from './tasks';
+import { sortTasks, Task } from './taskUtils';
 
 const basePath = 'tasks';
 
@@ -13,12 +13,10 @@ interface ApiResponse {
 type ApiPayload = Partial<Task>;
 
 export const getAllTasks = async (): Promise<Task[]> => {
-    // setStatusMessage('Loading...');
     const apiResponse = await executeApiCall('', '', 'GET', null);
-    // setStatusMessage('');
 
     if (apiResponse.data && apiResponse.data?.length > 0) {
-        return apiResponse.data as Task[];
+        return sortTasks(apiResponse.data as Task[]);
     }
 
     setErrorMessage(ERROR_MESSAGE);

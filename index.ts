@@ -1,6 +1,6 @@
 import { input } from '@inquirer/prompts';
-import select, { addAllowedMenuOptions } from './inquirerSelect';
-import { getMenuChoices, Task } from './tasks';
+import select from './inquirerSelect';
+import { getMenuChoices, Task } from './taskUtils';
 import { getAllTasks } from './apiUtils';
 
 let actionLetter: string = '';
@@ -26,11 +26,9 @@ const showMainMenu = async () => {
         if (!errorState) {
             if (weHaveAtLeastOneTask) {
                 menuPrompt = 'Select a task\n(M)ark done, (E)dit, (D)elete, ';
-                addAllowedMenuOptions('MED');
             }
 
             menuPrompt += '(C)reate, ';
-            addAllowedMenuOptions('C');
         }
 
         return menuPrompt + '(Q)uit';
@@ -38,7 +36,7 @@ const showMainMenu = async () => {
 
     const tasks = await getAllTasks();
 
-    weHaveAtLeastOneTask = !(tasks.length === 1 && tasks[0]._id === '0');
+    weHaveAtLeastOneTask = !(tasks.length === 1 && tasks[0].id === '0');
     errorState = errorMessage !== '';
 
     const menuChoices = getMenuChoices(tasks);
@@ -50,55 +48,42 @@ const showMainMenu = async () => {
         choices: menuChoices,
     });
 
-    if (actionLetter === 'Q') {
-        process.exit(0);
-    }
-
-    if (!errorState) {
-        if (actionLetter === 'C') {
+    switch (actionLetter) {
+        case 'Q':
+            process.exit(0);
+        case 'C':
             await processCreateTask();
-        } else if (weHaveAtLeastOneTask) {
-            switch (actionLetter) {
-                case 'M':
-                    processMarkDone(selectedTask._id);
-                    break;
-                case 'E':
-                    await processEdit(selectedTask);
-                    break;
-                case 'D':
-                    processDelete(selectedTask._id);
-                    break;
-
-                default:
-                    break;
-            }
-        }
+            break;
+        case 'M':
+            processMarkDone(selectedTask.id);
+            break;
+        case 'E':
+            await processEdit(selectedTask);
+            break;
+        case 'D':
+            processDelete(selectedTask.id);
+        default:
+            break;
     }
 
     showMainMenu();
 };
 
 const processMarkDone = (taskId: string) => {
-    if (taskId !== '0') {
-        console.log('Marking taskId ' + taskId + ' as done.');
-    }
+    console.log('Marking taskId ' + taskId + ' as done.');
 };
 
 const processEdit = async (task: Task) => {
-    if (task._id !== '0') {
-        const newTask = await input({
-            default: task.content,
-            message: 'Editing task (press (Tab) to fill): ',
-        });
+    const newTask = await input({
+        default: task.content,
+        message: 'Editing task (press (Tab) to fill): ',
+    });
 
-        console.log('Got newTask: ' + newTask);
-    }
+    console.log('Got newTask: ' + newTask);
 };
 
 const processDelete = (taskId: string) => {
-    if (taskId !== '0') {
-        console.log('Deleting taskId ' + taskId);
-    }
+    console.log('Deleting taskId ' + taskId);
 };
 
 const processCreateTask = async () => {
