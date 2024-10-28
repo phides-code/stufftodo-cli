@@ -1,7 +1,7 @@
 import { input } from '@inquirer/prompts';
 import select from './inquirerSelect';
 import { getMenuChoices, Task } from './taskUtils';
-import { createTask, deleteTask, getAllTasks } from './apiUtils';
+import { createTask, deleteTask, getAllTasks, updateTask } from './apiUtils';
 
 let actionLetter: string = '';
 let errorMessage: string = '';
@@ -40,7 +40,7 @@ const showMainMenu = async () => {
 
     const tasks = await getAllTasks();
 
-    weHaveAtLeastOneTask = !(tasks.length === 1 && tasks[0].id === '0');
+    weHaveAtLeastOneTask = tasks.length > 0 && tasks[0].id !== '0';
     errorState = errorMessage !== '';
 
     const menuChoices = getMenuChoices(tasks);
@@ -60,7 +60,7 @@ const showMainMenu = async () => {
             await processCreateTask();
             break;
         case 'M':
-            processMarkDone(selectedTask.id);
+            await processMarkDone(selectedTask);
             break;
         case 'E':
             await processEdit(selectedTask);
@@ -74,21 +74,32 @@ const showMainMenu = async () => {
     showMainMenu();
 };
 
-const processMarkDone = (taskId: string) => {
-    console.log('Marking taskId ' + taskId + ' as done.');
+const processMarkDone = async (task: Task) => {
+    console.log('Marking task ' + task.id + ' as done...');
+
+    await updateTask({
+        ...task,
+        taskStatus: 'COMPLETED',
+        completedOn: Date.now(),
+    });
 };
 
 const processEdit = async (task: Task) => {
-    const newTask = await input({
+    const newTaskContent = await input({
         default: task.content,
         message: 'Editing task (press (Tab) to fill): ',
     });
 
-    console.log('Got newTask: ' + newTask);
+    console.log('Updating task: ' + task.id + '...');
+
+    await updateTask({
+        ...task,
+        content: newTaskContent,
+    });
 };
 
 const processDelete = async (taskId: string) => {
-    console.log('Deleting taskId ' + taskId);
+    console.log('Deleting task: ' + taskId + '...');
     await deleteTask(taskId);
 };
 

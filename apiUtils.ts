@@ -76,6 +76,32 @@ export const deleteTask = async (taskId: string) => {
     return;
 };
 
+export const updateTask = async (updatedTask: Task) => {
+    const apiResponse = await executeApiCall(
+        '',
+        updatedTask.id,
+        'PUT',
+        updatedTask
+    );
+
+    if (apiResponse.data && (apiResponse.data as Task).id) {
+        setStatusMessage('Task updated.');
+        return;
+    }
+
+    setStatusMessage('Could not update task.');
+    logToFile('updateTask() failed to get apiResponse.data');
+
+    if (apiResponse.errorMessage && apiResponse.errorMessage != null) {
+        logToFile(
+            'updateTask() got apiResponse.errorMessage: ' +
+                apiResponse.errorMessage
+        );
+    }
+
+    return;
+};
+
 const executeApiCall = async (
     endpoint: string,
     param: string,
