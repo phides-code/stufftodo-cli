@@ -1,10 +1,11 @@
 import { input } from '@inquirer/prompts';
 import select from './inquirerSelect';
 import { getMenuChoices, Task } from './taskUtils';
-import { getAllTasks } from './apiUtils';
+import { createTask, getAllTasks } from './apiUtils';
 
 let actionLetter: string = '';
 let errorMessage: string = '';
+let statusMessage: string = '';
 let weHaveAtLeastOneTask: boolean = false;
 let errorState: boolean = false;
 
@@ -15,6 +16,9 @@ export const setActionLetter = (newAction: string) => {
 };
 export const setErrorMessage = (newMessage: string) => {
     errorMessage = newMessage;
+};
+export const setStatusMessage = (newMessage: string) => {
+    statusMessage = newMessage;
 };
 
 export const ERROR_MESSAGE = 'Something went wrong';
@@ -42,6 +46,7 @@ const showMainMenu = async () => {
     const menuChoices = getMenuChoices(tasks);
 
     console.log(errorMessage);
+    console.log(statusMessage);
 
     const selectedTask = await select({
         message: buildMenuPrompt(),
@@ -87,8 +92,9 @@ const processDelete = (taskId: string) => {
 };
 
 const processCreateTask = async () => {
-    const newTask = await input({ message: 'Enter new task: ' });
-    console.log('Creating newTask: ' + newTask);
+    const newTaskContent = await input({ message: 'Enter new task: ' });
+    console.log('Creating new task...');
+    await createTask(newTaskContent);
 };
 
 // Handle '\x03' aka ctrl-c

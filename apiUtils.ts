@@ -1,4 +1,4 @@
-import { ERROR_MESSAGE, setErrorMessage } from '.';
+import { ERROR_MESSAGE, setErrorMessage, setStatusMessage } from '.';
 import getSecrets from './getSecrets';
 import logToFile from './logToFile';
 import { sortTasks, Task } from './taskUtils';
@@ -6,7 +6,7 @@ import { sortTasks, Task } from './taskUtils';
 const basePath = 'tasks';
 
 interface ApiResponse {
-    data: Task[] | null;
+    data: Task[] | Task | null;
     errorMessage: string | null;
 }
 
@@ -15,20 +15,44 @@ type ApiPayload = Partial<Task>;
 export const getAllTasks = async (): Promise<Task[]> => {
     const apiResponse = await executeApiCall('', '', 'GET', null);
 
-    if (apiResponse.data && apiResponse.data?.length > 0) {
+    if (apiResponse.data && (apiResponse.data as Task[]).length > 0) {
         return sortTasks(apiResponse.data as Task[]);
     }
 
     setErrorMessage(ERROR_MESSAGE);
-    logToFile('failed to get apiResponse.data');
+    logToFile('getAllTasks() failed to get apiResponse.data');
 
     if (apiResponse.errorMessage && apiResponse.errorMessage != null) {
         logToFile(
-            'getTasks got apiQueryResponse.error: ' + apiResponse.errorMessage
+            'getAllTasks() got apiResponse.errorMessage: ' +
+                apiResponse.errorMessage
         );
     }
 
     return [];
+};
+
+export const createTask = async (newTaskContent: string) => {
+    const apiResponse = await executeApiCall('', '', 'POST', {
+        content: newTaskContent,
+    });
+
+    if (apiResponse.data && (apiResponse.data as Task).createdOn) {
+        setStatusMessage('Task created.');
+        return;
+    }
+
+    setStatusMessage('Could not create task.');
+    logToFile('createTask() failed to get apiResponse.data');
+
+    if (apiResponse.errorMessage && apiResponse.errorMessage != null) {
+        logToFile(
+            'createTask() got apiResponse.errorMessage: ' +
+                apiResponse.errorMessage
+        );
+    }
+
+    return;
 };
 
 const executeApiCall = async (
