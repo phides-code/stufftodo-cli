@@ -56,6 +56,8 @@ import ansiEscapes from 'ansi-escapes';
 import { getErrorState, getWeHaveAtLeastOneTask, setActionLetter } from '.';
 import { Task } from './taskUtils';
 
+const MAX_PAGE_SIZE = 10;
+
 type SelectTheme = {
     icon: { cursor: string };
     style: {
@@ -143,7 +145,7 @@ function normalizeChoices<Value>(
 
 export default createPrompt(
     <Value>(config: SelectConfig<Value>, done: (value: Value) => void) => {
-        const { loop = true, pageSize = 7 } = config;
+        const { loop = true, pageSize = MAX_PAGE_SIZE } = config;
         const firstRender = useRef(true);
         const theme = makeTheme<SelectTheme>(selectTheme, config.theme);
         const [status, setStatus] = useState<Status>('idle');
