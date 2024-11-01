@@ -68,7 +68,7 @@ type SelectTheme = {
 const selectTheme: SelectTheme = {
     icon: { cursor: figures.pointer },
     style: {
-        disabled: (text: string) => colors.dim(`- ${text}`),
+        disabled: (text: string) => colors.dim(text),
         description: (text: string) => colors.cyan(text),
     },
     helpMode: 'auto',
@@ -271,6 +271,8 @@ export default createPrompt(
 
                 const color = isActive
                     ? theme.style.highlight
+                    : item.disabled
+                    ? theme.style.disabled
                     : (x: string) => x;
                 const cursor = isActive ? theme.icon.cursor : ` `;
                 return color(
