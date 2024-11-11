@@ -117,7 +117,7 @@ const executeApiCall = async (
             method,
             headers: {
                 'Content-Type': 'application/json',
-                'X-API-KEY': apiKey,
+                'x-api-key': apiKey,
             },
             body: payload ? JSON.stringify(payload) : null,
         });
